@@ -22,13 +22,13 @@ class TmdbService
      * @param string $query
      * @return array
      */
-    public function searchMovies(string $query): array
+    public function searchMovies(string $query, bool $includeAdult = false): array
     {
         $response = Http::get("{$this->baseUrl}/search/movie", [
             'api_key' => $this->apiKey,
             'query' => $query,
             'language' => 'it-IT',
-            'include_adult' => false,
+            'include_adult' => $includeAdult,
         ]);
 
         if ($response->successful()) {

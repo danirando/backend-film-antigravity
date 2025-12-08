@@ -24,12 +24,13 @@ class MovieController extends Controller
     public function search(Request $request): JsonResponse
     {
         $query = $request->input('query');
+        $includeAdult = $request->boolean('include_adult');
 
         if (!$query) {
             return response()->json(['error' => 'Query parameter is required'], 400);
         }
 
-        $results = $this->tmdbService->searchMovies($query);
+        $results = $this->tmdbService->searchMovies($query, $includeAdult);
 
         return response()->json($results);
     }
