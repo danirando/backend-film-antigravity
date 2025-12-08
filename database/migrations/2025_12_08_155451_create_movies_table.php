@@ -11,8 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('watchlists', function (Blueprint $table) {
+        Schema::create('movies', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('tmdb_id')->unique();
+            $table->string('title');
+            $table->string('poster_path')->nullable();
+            $table->date('release_date')->nullable();
             $table->timestamps();
         });
     }
@@ -22,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('watchlists');
+        Schema::dropIfExists('movies');
     }
 };
