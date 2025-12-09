@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Movie;
+use App\Models\Media;
 use Illuminate\Http\Request;
 
 class WatchlistController extends Controller
@@ -10,7 +10,7 @@ class WatchlistController extends Controller
     public function index(Request $request)
     {
         return response()->json(
-            $request->user()->movies()->orderBy('watchlists.created_at', 'desc')->get()
+            $request->user()->media()->orderBy('watchlists.created_at', 'desc')->get()
         );
     }
 
@@ -18,45 +18,59 @@ class WatchlistController extends Controller
     {
         $validated = $request->validate([
             'tmdb_id' => 'required|integer',
-            'title' => 'required|string',
+            'type' => 'required|in:movie,tv',
+            'name' => 'required|string',
+            'original_name' => 'nullable|string',
             'poster_path' => 'nullable|string',
+            'overview' => 'nullable|string',
             'release_date' => 'nullable|date',
+            'first_air_date' => 'nullable|date',
+            'number_of_seasons' => 'nullable|integer',
+            'number_of_episodes' => 'nullable|integer',
         ]);
 
-        // Find or create the movie in local DB
-        $movie = Movie::firstOrCreate(
-            ['tmdb_id' => $validated['tmdb_id']],
+        // Find or create the media in local DB
+        $media = Media::firstOrCreate(
             [
-                'title' => $validated['title'],
-                'poster_path' => $validated['poster_path'],
-                'release_date' => $validated['release_date'],
+                'tmdb_id' => $validated['tmdb_id'],
+                'type' => $validated['type']
+            ],
+            [
+                'name' => $validated['name'],
+                'original_name' => $validated['original_name'] ?? null,
+                'poster_path' => $validated['poster_path'] ?? null,
+                'overview' => $validated['overview'] ?? null,
+                'release_date' => $validated['release_date'] ?? null,
+                'first_air_date' => $validated['first_air_date'] ?? null,
+                'number_of_seasons' => $validated['number_of_seasons'] ?? null,
+                'number_of_episodes' => $validated['number_of_episodes'] ?? null,
             ]
         );
 
         // Attach to user without duplicating
-        $request->user()->movies()->syncWithoutDetaching([$movie->id]);
+        $request->user()->media()->syncWithoutDetaching([$media->id]);
 
         return response()->json([
-            'message' => 'Movie added to watchlist',
-            'movie' => $movie
+            'message' => 'Media added to watchlist',
+            'media' => $media
         ], 201);
     }
 
     public function destroy(Request $request, int $tmdbId)
     {
-        $movie = Movie::where('tmdb_id', $tmdbId)->firstOrFail();
+        $media = Media::where('tmdb_id', $tmdbId)->firstOrFail();
         
-        $request->user()->movies()->detach($movie->id);
+        $request->user()->media()->detach($media->id);
 
-        return response()->json(['message' => 'Movie removed from watchlist']);
+        return response()->json(['message' => 'Media removed from watchlist']);
     }
 
     public function update(Request $request, int $tmdbId)
     {
-        $movie = Movie::where('tmdb_id', $tmdbId)->firstOrFail();
+        $media = Media::where('tmdb_id', $tmdbId)->firstOrFail();
         $watched = $request->boolean('watched');
 
-        $request->user()->movies()->updateExistingPivot($movie->id, [
+        $request->user()->media()->updateExistingPivot($media->id, [
             'watched' => $watched,
         ]);
 

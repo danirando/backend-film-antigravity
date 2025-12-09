@@ -19,5 +19,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::patch('/watchlist/{tmdbId}', [\App\Http\Controllers\WatchlistController::class, 'update']);
 });
 
-Route::get('/movies/search', [\App\Http\Controllers\MovieController::class, 'search']);
-Route::get('/movies/{id}', [\App\Http\Controllers\MovieController::class, 'show']);
+// Media Routes (Movies & TV Shows)
+Route::get('/media/search', [\App\Http\Controllers\MediaController::class, 'search']);
+Route::get('/media/{type}/{id}', [\App\Http\Controllers\MediaController::class, 'show']);
+Route::get('/tv/popular', [\App\Http\Controllers\MediaController::class, 'popularTv']);

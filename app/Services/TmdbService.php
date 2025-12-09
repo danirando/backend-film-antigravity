@@ -40,6 +40,30 @@ class TmdbService
     }
 
     /**
+     * Cerca serie TV per titolo.
+     *
+     * @param string $query
+     * @param bool $includeAdult
+     * @return array
+     */
+    public function searchTvShows(string $query, bool $includeAdult = false): array
+    {
+        $response = Http::get("{$this->baseUrl}/search/tv", [
+            'api_key' => $this->apiKey,
+            'query' => $query,
+            'language' => 'it-IT',
+            'include_adult' => $includeAdult,
+        ]);
+
+        if ($response->successful()) {
+            return $response->json()['results'] ?? [];
+        }
+
+        Log::error('TMDB TV Search Error: ' . $response->body());
+        return [];
+    }
+
+    /**
      * Ottieni dettagli di un film per ID.
      *
      * @param int $id
@@ -58,5 +82,46 @@ class TmdbService
 
         Log::error('TMDB Detail Error: ' . $response->body());
         return null;
+    }
+
+    /**
+     * Ottieni dettagli di una serie TV per ID.
+     *
+     * @param int $id
+     * @return array|null
+     */
+    public function getTvShowDetails(int $id): ?array
+    {
+        $response = Http::get("{$this->baseUrl}/tv/{$id}", [
+            'api_key' => $this->apiKey,
+            'language' => 'it-IT',
+        ]);
+
+        if ($response->successful()) {
+            return $response->json();
+        }
+
+        Log::error('TMDB TV Detail Error: ' . $response->body());
+        return null;
+    }
+
+    /**
+     * Ottieni serie TV popolari.
+     *
+     * @return array
+     */
+    public function getPopularTvShows(): array
+    {
+        $response = Http::get("{$this->baseUrl}/tv/popular", [
+            'api_key' => $this->apiKey,
+            'language' => 'it-IT',
+        ]);
+
+        if ($response->successful()) {
+            return $response->json()['results'] ?? [];
+        }
+
+        Log::error('TMDB Popular TV Error: ' . $response->body());
+        return [];
     }
 }

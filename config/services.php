@@ -33,6 +33,11 @@ return [
         'base_url' => 'https://api.themoviedb.org/3',
     ],
 
+    'omdb' => [
+        'api_key' => env('OMDB_API_KEY'),
+        'base_url' => 'http://www.omdbapi.com/',
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

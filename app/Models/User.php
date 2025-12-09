@@ -36,13 +36,11 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
+     * The media (movies/TV shows) that belong to the user.
      */
-    public function movies(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function media(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
-        return $this->belongsToMany(Movie::class, 'watchlists')
+        return $this->belongsToMany(Media::class, 'watchlists')
             ->withPivot('watched')
             ->withTimestamps();
     }
