@@ -138,4 +138,60 @@ class TmdbService
         Log::error('TMDB Popular TV Error: ' . $response->body());
         return [];
     }
+
+    /**
+     * Get trending content for autocomplete suggestions.
+     *
+     * @param string $query
+     * @return array
+     */
+    public function getTrending(string $query = ''): array
+    {
+        // If query is provided, search multi; otherwise get trending
+        if (!empty($query)) {
+            $cacheKey = 'tmdb_suggestions_' . md5($query);
+            
+            return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 5, function () use ($query) {
+                $response = Http::get("{$this->baseUrl}/search/multi", [
+                    'api_key' => $this->apiKey,
+                    'query' => $query,
+                    'language' => 'it-IT',
+                    'include_adult' => false,
+                    'page' => 1,
+                ]);
+
+                if ($response->successful()) {
+                    $results = $response->json()['results'] ?? [];
+                    // Filter to only movies and TV shows
+                    $filtered = array_filter($results, fn($item) => in_array($item['media_type'] ?? '', ['movie', 'tv']));
+                    
+                    // Sort by popularity (descending)
+                    usort($filtered, function($a, $b) {
+                        return ($b['popularity'] ?? 0) <=> ($a['popularity'] ?? 0);
+                    });
+                    
+                    return array_slice($filtered, 0, 8);
+                }
+
+                return [];
+            });
+        }
+
+        // Get trending content
+        $cacheKey = 'tmdb_trending_all';
+        
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 60, function () {
+            $response = Http::get("{$this->baseUrl}/trending/all/week", [
+                'api_key' => $this->apiKey,
+                'language' => 'it-IT',
+            ]);
+
+            if ($response->successful()) {
+                $results = $response->json()['results'] ?? [];
+                return array_slice($results, 0, 8);
+            }
+
+            return [];
+        });
+    }
 }

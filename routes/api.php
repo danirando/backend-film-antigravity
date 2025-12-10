@@ -21,5 +21,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 // Media Routes (Movies & TV Shows)
 Route::get('/media/search', [\App\Http\Controllers\MediaController::class, 'search']);
+Route::get('/media/suggestions', [\App\Http\Controllers\MediaController::class, 'suggestions']);
 Route::get('/media/{type}/{id}', [\App\Http\Controllers\MediaController::class, 'show']);
 Route::get('/tv/popular', [\App\Http\Controllers\MediaController::class, 'popularTv']);

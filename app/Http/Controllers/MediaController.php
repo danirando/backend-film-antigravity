@@ -169,6 +169,32 @@ class MediaController extends Controller
     }
 
     /**
+     * Get autocomplete suggestions.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function suggestions(Request $request): JsonResponse
+    {
+        $query = $request->input('q', '');
+        
+        $results = $this->tmdbService->getTrending($query);
+        
+        // Format for autocomplete
+        $suggestions = array_map(function($item) {
+            return [
+                'id' => $item['id'],
+                'title' => $item['title'] ?? $item['name'] ?? 'Untitled',
+                'media_type' => $item['media_type'] ?? 'movie',
+                'year' => isset($item['release_date']) ? substr($item['release_date'], 0, 4) : 
+                         (isset($item['first_air_date']) ? substr($item['first_air_date'], 0, 4) : ''),
+            ];
+        }, $results);
+
+        return response()->json($suggestions);
+    }
+
+    /**
      * Get popular TV shows.
      *
      * @return JsonResponse
