@@ -79,39 +79,68 @@ class MediaController extends Controller
      * @param array $results
      * @return array
      */
+    /**
+     * Filter adult content from results using OMDb.
+     *
+     * @param array $results
+     * @return array
+     */
     protected function filterAdultContent(array $results): array
     {
-        return array_values(array_filter($results, function($item) {
-            // Only validate movies (TV shows are generally well-classified by TMDB)
+        $moviesToCheck = [];
+        $indicesToCheck = [];
+
+        // First pass: identify movies that need OMDb verification
+        foreach ($results as $index => $item) {
+            // Only validate movies
             if (($item['media_type'] ?? 'movie') !== 'movie') {
-                return true;
+                continue;
             }
 
             $title = $item['title'] ?? $item['name'] ?? '';
             
-            // First check: suspicious keywords in title
+            // First check: suspicious keywords in title (fast check)
             if ($this->omdbService->hasSuspiciousKeywords($title)) {
-                return false; // Filter out
+                unset($results[$index]); // Remove immediately
+                continue;
             }
 
             $year = null;
-
-            // Extract year from release_date if available
             if (isset($item['release_date']) && !empty($item['release_date'])) {
                 $year = (int) substr($item['release_date'], 0, 4);
             }
 
-            // Get OMDb rating
-            $omdbData = $this->omdbService->getMovieRating($title, $year);
+            $moviesToCheck[] = [
+                'title' => $title,
+                'year' => $year,
+                'id' => $index // Use array index as ID to map back
+            ];
+            $indicesToCheck[] = $index;
+        }
+
+        if (empty($moviesToCheck)) {
+            return array_values($results);
+        }
+
+        // Batch fetch OMDb ratings
+        $ratings = $this->omdbService->getMovieRatingsMultiple($moviesToCheck);
+
+        // Second pass: filter based on OMDb data
+        foreach ($indicesToCheck as $index) {
+            $omdbData = $ratings[$index] ?? null;
 
             // If OMDb doesn't have data, we already checked keywords, so keep it
             if (!$omdbData) {
-                return true;
+                continue;
             }
 
             // Filter out if inappropriate based on OMDb data
-            return !$this->omdbService->isPotentiallyInappropriate($omdbData);
-        }));
+            if ($this->omdbService->isPotentiallyInappropriate($omdbData)) {
+                unset($results[$index]);
+            }
+        }
+
+        return array_values($results);
     }
 
     /**

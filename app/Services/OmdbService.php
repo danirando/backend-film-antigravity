@@ -45,18 +45,7 @@ class OmdbService
                 $response = Http::timeout(5)->get($this->baseUrl, $params);
 
                 if ($response->successful()) {
-                    $data = $response->json();
-
-                    // Check if movie was found
-                    if (isset($data['Response']) && $data['Response'] === 'True') {
-                        return [
-                            'title' => $data['Title'] ?? null,
-                            'year' => $data['Year'] ?? null,
-                            'rated' => $data['Rated'] ?? 'N/A',
-                            'imdb_rating' => $data['imdbRating'] ?? null,
-                            'genre' => $data['Genre'] ?? null,
-                        ];
-                    }
+                    return $this->parseOmdbResponse($response->json());
                 }
 
                 return null;
@@ -65,6 +54,93 @@ class OmdbService
                 return null;
             }
         });
+    }
+
+    /**
+     * Get ratings for multiple movies in parallel.
+     * 
+     * @param array $movies Array of ['title' => string, 'year' => ?int, 'id' => mixed]
+     * @return array Map of id => rating_data
+     */
+    public function getMovieRatingsMultiple(array $movies): array
+    {
+        $results = [];
+        $requests = [];
+
+        foreach ($movies as $movie) {
+            $title = $movie['title'];
+            $year = $movie['year'] ?? null;
+            $id = $movie['id'];
+            
+            $cacheKey = 'omdb_rating_' . md5($title . ($year ?? ''));
+
+            if (Cache::has($cacheKey)) {
+                $results[$id] = Cache::get($cacheKey);
+            } else {
+                // Prepare request for pool
+                $requests[$id] = [
+                    'url' => $this->baseUrl,
+                    'params' => array_filter([
+                        'apikey' => $this->apiKey,
+                        't' => $title,
+                        'type' => 'movie',
+                        'y' => $year
+                    ]),
+                    'cache_key' => $cacheKey
+                ];
+            }
+        }
+
+        if (empty($requests)) {
+            return $results;
+        }
+
+        // Execute parallel requests
+        $responses = Http::pool(function ($pool) use ($requests) {
+            $poolRequests = [];
+            foreach ($requests as $id => $req) {
+                 $poolRequests[] = $pool->as($id)->timeout(5)->get($req['url'], $req['params']);
+            }
+            return $poolRequests;
+        });
+
+        // Process responses and cache them
+        foreach ($responses as $id => $response) {
+            $ratingData = null;
+            
+            if ($response->successful()) {
+                $ratingData = $this->parseOmdbResponse($response->json());
+            } else {
+                 Log::warning('OMDb API Parallel Error: ' . $response->toException()?->getMessage());
+            }
+
+            // Cache the result (even if null, to avoid repeated failed lookups? 
+            // Better to only cache success or have short expiry for failures. 
+            // For now, mirroring existing logic: existing logic caches everything inside 'remember'.
+            // Here we need to put it in cache manually.
+            if ($ratingData) {
+                Cache::put($requests[$id]['cache_key'], $ratingData, 60 * 60 * 24 * 30);
+            }
+            
+            $results[$id] = $ratingData;
+        }
+
+        return $results;
+    }
+
+    protected function parseOmdbResponse(array $data): ?array
+    {
+        // Check if movie was found
+        if (isset($data['Response']) && $data['Response'] === 'True') {
+            return [
+                'title' => $data['Title'] ?? null,
+                'year' => $data['Year'] ?? null,
+                'rated' => $data['Rated'] ?? 'N/A',
+                'imdb_rating' => $data['imdbRating'] ?? null,
+                'genre' => $data['Genre'] ?? null,
+            ];
+        }
+        return null;
     }
 
     /**

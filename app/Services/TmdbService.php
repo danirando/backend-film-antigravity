@@ -22,21 +22,31 @@ class TmdbService
      * @param string $query
      * @return array
      */
+    /**
+     * Cerca film per titolo.
+     *
+     * @param string $query
+     * @return array
+     */
     public function searchMovies(string $query, bool $includeAdult = false): array
     {
-        $response = Http::get("{$this->baseUrl}/search/movie", [
-            'api_key' => $this->apiKey,
-            'query' => $query,
-            'language' => 'it-IT',
-            'include_adult' => $includeAdult,
-        ]);
+        $cacheKey = 'tmdb_search_movie_' . md5($query . ($includeAdult ? '_adult' : ''));
 
-        if ($response->successful()) {
-            return $response->json()['results'] ?? [];
-        }
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 60, function () use ($query, $includeAdult) {
+            $response = Http::get("{$this->baseUrl}/search/movie", [
+                'api_key' => $this->apiKey,
+                'query' => $query,
+                'language' => 'it-IT',
+                'include_adult' => $includeAdult,
+            ]);
 
-        Log::error('TMDB Search Error: ' . $response->body());
-        return [];
+            if ($response->successful()) {
+                return $response->json()['results'] ?? [];
+            }
+
+            Log::error('TMDB Search Error: ' . $response->body());
+            return [];
+        });
     }
 
     /**
@@ -48,19 +58,23 @@ class TmdbService
      */
     public function searchTvShows(string $query, bool $includeAdult = false): array
     {
-        $response = Http::get("{$this->baseUrl}/search/tv", [
-            'api_key' => $this->apiKey,
-            'query' => $query,
-            'language' => 'it-IT',
-            'include_adult' => $includeAdult,
-        ]);
+        $cacheKey = 'tmdb_search_tv_' . md5($query . ($includeAdult ? '_adult' : ''));
 
-        if ($response->successful()) {
-            return $response->json()['results'] ?? [];
-        }
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 60, function () use ($query, $includeAdult) {
+            $response = Http::get("{$this->baseUrl}/search/tv", [
+                'api_key' => $this->apiKey,
+                'query' => $query,
+                'language' => 'it-IT',
+                'include_adult' => $includeAdult,
+            ]);
 
-        Log::error('TMDB TV Search Error: ' . $response->body());
-        return [];
+            if ($response->successful()) {
+                return $response->json()['results'] ?? [];
+            }
+
+            Log::error('TMDB TV Search Error: ' . $response->body());
+            return [];
+        });
     }
 
     /**
