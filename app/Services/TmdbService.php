@@ -194,4 +194,156 @@ class TmdbService
             return [];
         });
     }
+
+    /**
+     * Get popular movies.
+     *
+     * @return array
+     */
+    public function getPopularMovies(): array
+    {
+        $cacheKey = 'tmdb_popular_movies';
+        
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 60, function () {
+            $response = Http::get("{$this->baseUrl}/movie/popular", [
+                'api_key' => $this->apiKey,
+                'language' => 'it-IT',
+            ]);
+
+            if ($response->successful()) {
+                return $response->json()['results'] ?? [];
+            }
+
+            Log::error('TMDB Popular Movies Error: ' . $response->body());
+            return [];
+        });
+    }
+
+    /**
+     * Get trending content (movies or TV shows).
+     *
+     * @param string $mediaType 'movie' or 'tv'
+     * @param string $timeWindow 'day' or 'week'
+     * @return array
+     */
+    public function getTrendingContent(string $mediaType = 'movie', string $timeWindow = 'week'): array
+    {
+        $cacheKey = "tmdb_trending_{$mediaType}_{$timeWindow}";
+        
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 60, function () use ($mediaType, $timeWindow) {
+            $response = Http::get("{$this->baseUrl}/trending/{$mediaType}/{$timeWindow}", [
+                'api_key' => $this->apiKey,
+                'language' => 'it-IT',
+            ]);
+
+            if ($response->successful()) {
+                return $response->json()['results'] ?? [];
+            }
+
+            Log::error("TMDB Trending {$mediaType} Error: " . $response->body());
+            return [];
+        });
+    }
+
+    /**
+     * Get movies now playing in theaters.
+     *
+     * @param string $region ISO 3166-1 code (e.g., 'IT', 'US')
+     * @return array
+     */
+    public function getNowPlaying(string $region = 'IT'): array
+    {
+        $cacheKey = "tmdb_now_playing_{$region}";
+        
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 60 * 6, function () use ($region) {
+            $response = Http::get("{$this->baseUrl}/movie/now_playing", [
+                'api_key' => $this->apiKey,
+                'language' => 'it-IT',
+                'region' => $region,
+            ]);
+
+            if ($response->successful()) {
+                return $response->json()['results'] ?? [];
+            }
+
+            Log::error('TMDB Now Playing Error: ' . $response->body());
+            return [];
+        });
+    }
+
+    /**
+     * Get similar movies.
+     *
+     * @param int $movieId
+     * @return array
+     */
+    public function getSimilarMovies(int $movieId): array
+    {
+        $cacheKey = "tmdb_similar_movie_{$movieId}";
+        
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 60 * 24, function () use ($movieId) {
+            $response = Http::get("{$this->baseUrl}/movie/{$movieId}/similar", [
+                'api_key' => $this->apiKey,
+                'language' => 'it-IT',
+            ]);
+
+            if ($response->successful()) {
+                return $response->json()['results'] ?? [];
+            }
+
+            Log::error("TMDB Similar Movies Error for ID {$movieId}: " . $response->body());
+            return [];
+        });
+    }
+
+    /**
+     * Get similar TV shows.
+     *
+     * @param int $tvShowId
+     * @return array
+     */
+    public function getSimilarTvShows(int $tvShowId): array
+    {
+        $cacheKey = "tmdb_similar_tv_{$tvShowId}";
+        
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 60 * 24, function () use ($tvShowId) {
+            $response = Http::get("{$this->baseUrl}/tv/{$tvShowId}/similar", [
+                'api_key' => $this->apiKey,
+                'language' => 'it-IT',
+            ]);
+
+            if ($response->successful()) {
+                return $response->json()['results'] ?? [];
+            }
+
+            Log::error("TMDB Similar TV Shows Error for ID {$tvShowId}: " . $response->body());
+            return [];
+        });
+    }
+
+    /**
+     * Get recommendations based on a movie or TV show.
+     *
+     * @param string $mediaType 'movie' or 'tv'
+     * @param int $id
+     * @return array
+     */
+    public function getRecommendations(string $mediaType, int $id): array
+    {
+        $cacheKey = "tmdb_recommendations_{$mediaType}_{$id}";
+        
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 60 * 24, function () use ($mediaType, $id) {
+            $response = Http::get("{$this->baseUrl}/{$mediaType}/{$id}/recommendations", [
+                'api_key' => $this->apiKey,
+                'language' => 'it-IT',
+            ]);
+
+            if ($response->successful()) {
+                return $response->json()['results'] ?? [];
+            }
+
+            Log::error("TMDB Recommendations Error for {$mediaType} ID {$id}: " . $response->body());
+            return [];
+        });
+    }
 }

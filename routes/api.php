@@ -24,3 +24,12 @@ Route::get('/media/search', [\App\Http\Controllers\MediaController::class, 'sear
 Route::get('/media/suggestions', [\App\Http\Controllers\MediaController::class, 'suggestions']);
 Route::get('/media/{type}/{id}', [\App\Http\Controllers\MediaController::class, 'show']);
 Route::get('/tv/popular', [\App\Http\Controllers\MediaController::class, 'popularTv']);
+
+// Home Page Routes
+Route::get('/home/now-playing', [\App\Http\Controllers\HomeController::class, 'nowPlaying']);
+Route::get('/home/trending', [\App\Http\Controllers\HomeController::class, 'trending']);
+Route::get('/home/popular', [\App\Http\Controllers\HomeController::class, 'popular']);
+
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/home/for-you', [\App\Http\Controllers\HomeController::class, 'forYou']);
+});
