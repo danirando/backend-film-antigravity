@@ -88,6 +88,7 @@ class TmdbService
         $response = Http::get("{$this->baseUrl}/movie/{$id}", [
             'api_key' => $this->apiKey,
             'language' => 'it-IT',
+            'append_to_response' => 'credits',
         ]);
 
         if ($response->successful()) {
@@ -109,6 +110,7 @@ class TmdbService
         $response = Http::get("{$this->baseUrl}/tv/{$id}", [
             'api_key' => $this->apiKey,
             'language' => 'it-IT',
+            'append_to_response' => 'credits',
         ]);
 
         if ($response->successful()) {
@@ -409,6 +411,34 @@ class TmdbService
 
             Log::error("TMDB Recommendations Error for {$mediaType} ID {$id}: " . $response->body());
             return [];
+        });
+    }
+
+    /**
+     * Get watch providers for a movie or TV show.
+     *
+     * @param string $mediaType 'movie' or 'tv'
+     * @param int $id
+     * @param string $region ISO 3166-1 code (e.g., 'IT', 'US')
+     * @return array|null
+     */
+    public function getWatchProviders(string $mediaType, int $id, string $region = 'IT'): ?array
+    {
+        $cacheKey = "tmdb_watch_providers_{$mediaType}_{$id}_{$region}";
+        
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 60 * 24, function () use ($mediaType, $id, $region) {
+            $response = Http::get("{$this->baseUrl}/{$mediaType}/{$id}/watch/providers", [
+                'api_key' => $this->apiKey,
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                // Return providers for the specified region
+                return $data['results'][$region] ?? null;
+            }
+
+            Log::error("TMDB Watch Providers Error for {$mediaType} ID {$id}: " . $response->body());
+            return null;
         });
     }
 }

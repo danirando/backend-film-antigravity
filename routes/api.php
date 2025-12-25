@@ -23,6 +23,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 Route::get('/media/search', [\App\Http\Controllers\MediaController::class, 'search']);
 Route::get('/media/suggestions', [\App\Http\Controllers\MediaController::class, 'suggestions']);
 Route::get('/media/{type}/{id}', [\App\Http\Controllers\MediaController::class, 'show']);
+Route::get('/media/{type}/{id}/watch-providers', [\App\Http\Controllers\MediaController::class, 'watchProviders']);
 Route::get('/tv/popular', [\App\Http\Controllers\MediaController::class, 'popularTv']);
 
 // Home Page Routes

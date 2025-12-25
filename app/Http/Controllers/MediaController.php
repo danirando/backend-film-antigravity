@@ -211,4 +211,33 @@ class MediaController extends Controller
 
         return response()->json($results);
     }
+
+    /**
+     * Get watch providers for a movie or TV show.
+     *
+     * @param Request $request
+     * @param string $type
+     * @param int $id
+     * @return JsonResponse
+     */
+    public function watchProviders(Request $request, string $type, int $id): JsonResponse
+    {
+        $region = $request->input('region', 'IT');
+
+        if (!in_array($type, ['movie', 'tv'])) {
+            return response()->json(['error' => 'Invalid type. Use "movie" or "tv"'], 400);
+        }
+
+        $providers = $this->tmdbService->getWatchProviders($type, $id, $region);
+
+        if ($providers === null) {
+            return response()->json([
+                'flatrate' => [],
+                'rent' => [],
+                'buy' => []
+            ]);
+        }
+
+        return response()->json($providers);
+    }
 }
