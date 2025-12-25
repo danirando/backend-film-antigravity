@@ -253,21 +253,86 @@ class TmdbService
      */
     public function getNowPlaying(string $region = 'IT'): array
     {
-        $cacheKey = "tmdb_now_playing_{$region}";
+        $cacheKey = "tmdb_now_playing_v4_{$region}";
         
         return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 60 * 6, function () use ($region) {
-            $response = Http::get("{$this->baseUrl}/movie/now_playing", [
-                'api_key' => $this->apiKey,
-                'language' => 'it-IT',
-                'region' => $region,
-            ]);
+            Log::info("Fetching Now Playing for region: {$region}");
+            
+            $allResults = [];
+            $seenIds = [];
+            
+            // Fetch 3 pages to get more comprehensive results
+            for ($page = 1; $page <= 3; $page++) {
+                $response = Http::get("{$this->baseUrl}/movie/now_playing", [
+                    'api_key' => $this->apiKey,
+                    'language' => 'it-IT',
+                    'region' => $region,
+                    'page' => $page
+                ]);
 
-            if ($response->successful()) {
-                return $response->json()['results'] ?? [];
+                if ($response->successful()) {
+                    $results = $response->json()['results'] ?? [];
+                    
+                    // Deduplicate results
+                    foreach ($results as $movie) {
+                        if (!in_array($movie['id'], $seenIds)) {
+                            $seenIds[] = $movie['id'];
+                            $allResults[] = $movie;
+                        }
+                    }
+                } else {
+                    Log::error("TMDB Now Playing Error (page {$page}): " . $response->body());
+                    break;
+                }
             }
-
-            Log::error('TMDB Now Playing Error: ' . $response->body());
-            return [];
+            
+            // Smart sorting: boost recent releases while maintaining popularity order
+            $now = new \DateTime();
+            usort($allResults, function($a, $b) use ($now) {
+                $aPopularity = $a['popularity'] ?? 0;
+                $bPopularity = $b['popularity'] ?? 0;
+                
+                // Calculate recency boost for movies released in last 14 days
+                $aReleaseDate = isset($a['release_date']) ? new \DateTime($a['release_date']) : null;
+                $bReleaseDate = isset($b['release_date']) ? new \DateTime($b['release_date']) : null;
+                
+                if ($aReleaseDate) {
+                    $aDaysSinceRelease = $now->diff($aReleaseDate)->days;
+                    if ($aDaysSinceRelease <= 14) {
+                        // Aggressive boost for very recent releases
+                        if ($aDaysSinceRelease == 0) {
+                            $aPopularity *= 1000; // Same day: 1000x boost
+                        } elseif ($aDaysSinceRelease <= 3) {
+                            $aPopularity *= 500; // Last 3 days: 500x boost
+                        } elseif ($aDaysSinceRelease <= 7) {
+                            $aPopularity *= 200; // Last week: 200x boost
+                        } else {
+                            $aPopularity *= 50; // Last 14 days: 50x boost
+                        }
+                    }
+                }
+                
+                if ($bReleaseDate) {
+                    $bDaysSinceRelease = $now->diff($bReleaseDate)->days;
+                    if ($bDaysSinceRelease <= 14) {
+                        // Aggressive boost for very recent releases
+                        if ($bDaysSinceRelease == 0) {
+                            $bPopularity *= 1000; // Same day: 1000x boost
+                        } elseif ($bDaysSinceRelease <= 3) {
+                            $bPopularity *= 500; // Last 3 days: 500x boost
+                        } elseif ($bDaysSinceRelease <= 7) {
+                            $bPopularity *= 200; // Last week: 200x boost
+                        } else {
+                            $bPopularity *= 50; // Last 14 days: 50x boost
+                        }
+                    }
+                }
+                
+                return $bPopularity <=> $aPopularity;
+            });
+            
+            Log::info("Fetched " . count($allResults) . " movies for region {$region}. First item: " . ($allResults[0]['title'] ?? 'N/A'));
+            return $allResults;
         });
     }
 
